@@ -1,0 +1,8 @@
+# Environment — contains secrets
+.env
+
+# Terraria world data
+world/
+
+# Claude Code project settings
+.claude/

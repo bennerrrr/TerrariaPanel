@@ -1,0 +1,33 @@
+services:
+  terraria:
+    image: ryshe/terraria:latest
+    container_name: ${CONTAINER_NAME:-terraria}
+    ports:
+      - "${TERRARIA_PORT:-7777}:7777"
+    volumes:
+      - ${WORLD_DIR:-./world}:/root/.local/share/Terraria/Worlds
+    environment:
+      WORLD_FILENAME: ${WORLD_FILENAME:-the_boyz.wld}
+    networks:
+      - terraria-net
+    restart: unless-stopped
+
+  terraria-web:
+    build: ./web
+    container_name: terraria-web
+    ports:
+      - "${WEB_PORT:-4823}:4823"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      CONTAINER_NAME: ${CONTAINER_NAME:-terraria}
+      TSHOCK_HOST: ${TSHOCK_HOST:-terraria}
+      TSHOCK_PORT: ${TSHOCK_PORT:-7878}
+      TSHOCK_TOKEN: ${TSHOCK_TOKEN:?TSHOCK_TOKEN must be set in .env}
+    networks:
+      - terraria-net
+    restart: unless-stopped
+
+networks:
+  terraria-net:
+    driver: bridge

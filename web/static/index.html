@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Boyz — Terraria</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0d18;
+    --surface:   #14142b;
+    --surface2:  #1c1c38;
+    --border:    #2a2a50;
+    --accent:    #7c3aed;
+    --accent2:   #9f67ff;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --yellow:    #eab308;
+    --text:      #e2e8f0;
+    --muted:     #6b7280;
+    --font-mono: 'Courier New', Courier, monospace;
+  }
+
+  html, body {
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--accent2);
+    letter-spacing: -0.3px;
+  }
+
+  .logo span { color: var(--muted); font-weight: 400; font-size: 13px; }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+
+  .status-badge.online { color: var(--green); }
+  .status-badge.offline { color: var(--red); }
+  .status-badge.loading { color: var(--yellow); }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  .status-badge.online .dot { animation: pulse 2s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .player-count {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: 4px;
+  }
+
+  .controls {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    border: none;
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-start  { background: var(--green); color: #000; }
+  .btn-stop   { background: var(--red);   color: #fff; }
+  .btn-restart { background: var(--accent); color: #fff; }
+  .btn-send   { background: var(--accent); color: #fff; }
+  .btn-tp     { background: var(--accent2); color: #000; font-size: 12px; padding: 5px 10px; }
+  .btn-save   { background: var(--yellow); color: #000; }
+
+  button:not(:disabled):hover { opacity: 0.85; }
+
+  /* ── Main layout ── */
+  main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: 1fr;
+    gap: 16px;
+    padding: 16px 24px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── Panel ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel-header .badge {
+    background: var(--surface2);
+    border-radius: 20px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ── Players panel ── */
+  .players-panel {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .player-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .player-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    border-radius: 6px;
+    gap: 8px;
+    transition: background 0.15s;
+  }
+
+  .player-item:hover { background: var(--surface2); }
+
+  .player-name {
+    flex: 1;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .player-empty {
+    padding: 24px 16px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  /* ── TP Form ── */
+  .tp-section {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tp-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+  }
+
+  .tp-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tp-label {
+    font-size: 12px;
+    color: var(--muted);
+    width: 28px;
+    flex-shrink: 0;
+  }
+
+  select {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 8px;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  select:focus { border-color: var(--accent2); }
+
+  /* ── Console panel ── */
+  .console-panel {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .console-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 12px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    background: #080812;
+    scroll-behavior: smooth;
+  }
+
+  .log-line {
+    display: block;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #94a3b8;
+  }
+
+  .log-line .ts {
+    color: #3f4f6a;
+    user-select: none;
+    margin-right: 4px;
+  }
+
+  .log-line.warn  { color: var(--yellow); }
+  .log-line.error { color: #ff6b6b; }
+  .log-line.join  { color: var(--green); }
+  .log-line.leave { color: #f97316; }
+  .log-line.info  { color: #60a5fa; }
+
+  .console-input {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .console-input input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--font-mono);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .console-input input:focus { border-color: var(--accent2); }
+  .console-input input::placeholder { color: var(--muted); }
+
+  /* ── Toast notifications ── */
+  #toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 100;
+  }
+
+  .toast-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    animation: slideIn 0.2s ease;
+    max-width: 300px;
+  }
+
+  .toast-item.success { border-color: var(--green); color: var(--green); }
+  .toast-item.error   { border-color: var(--red);   color: var(--red); }
+
+  @keyframes slideIn {
+    from { transform: translateX(20px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+
+  /* ── Time section ── */
+  .quick-section {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .time-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .btn-time {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 6px 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    text-align: center;
+  }
+
+  .btn-time:hover { background: var(--border); border-color: var(--accent2); }
+
+  /* ── Scroll-to-bottom button ── */
+  .console-header-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .console-header-wrap .panel-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+  }
+
+  .btn-scroll-bottom {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+
+  .btn-scroll-bottom:hover { background: var(--border); border-color: var(--accent2); color: var(--text); }
+
+  /* ── Scrollbars ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  @media (max-width: 768px) {
+    main { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .players-panel { grid-column: 1; grid-row: auto; }
+    .console-panel { grid-column: 1; grid-row: auto; min-height: 400px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">The Boyz <span>/ Terraria</span></div>
+  <div class="status-badge loading" id="statusBadge">
+    <div class="dot"></div>
+    <span id="statusText">Connecting…</span>
+    <span class="player-count" id="playerCount"></span>
+  </div>
+  <div class="controls">
+    <button class="btn-start"   id="btnStart"   onclick="serverAction('start')"  >▶ Start</button>
+    <button class="btn-stop"    id="btnStop"    onclick="serverAction('stop')"   >■ Stop</button>
+    <button class="btn-restart" id="btnRestart" onclick="serverAction('restart')">↺ Restart</button>
+    <button class="btn-save"    id="btnSave"    onclick="saveServer()"           >💾 Save</button>
+  </div>
+</header>
+
+<main>
+  <!-- Players -->
+  <div class="panel players-panel">
+    <div class="panel-header">
+      Players
+      <span class="badge" id="playerBadge">—</span>
+    </div>
+    <div class="player-list" id="playerList">
+      <div class="player-empty">No players online</div>
+    </div>
+    <div class="tp-section">
+      <div class="tp-title">Teleport</div>
+      <div class="tp-row">
+        <span class="tp-label">Move</span>
+        <select id="tpFrom"><option value="">— select player —</option></select>
+      </div>
+      <div class="tp-row">
+        <span class="tp-label">To</span>
+        <select id="tpTo"><option value="">— select player —</option></select>
+      </div>
+      <button class="btn-tp" onclick="doTP()" style="align-self:flex-end">Teleport →</button>
+    </div>
+
+    <div class="quick-section">
+      <div class="tp-title">Time</div>
+      <div class="time-grid">
+        <button class="btn-time" onclick="setTime('dawn')">🌅 Dawn</button>
+        <button class="btn-time" onclick="setTime('noon')">☀️ Noon</button>
+        <button class="btn-time" onclick="setTime('dusk')">🌆 Dusk</button>
+        <button class="btn-time" onclick="setTime('midnight')">🌙 Midnight</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Console -->
+  <div class="panel console-panel">
+    <div class="console-header-wrap">
+      <span class="panel-label">Console</span>
+      <button class="btn-scroll-bottom" onclick="scrollToBottom()">↓ Scroll to bottom</button>
+    </div>
+    <div class="console-output" id="consoleOutput"></div>
+    <div class="console-input">
+      <input type="text" id="cmdInput" placeholder="Enter server command…" onkeydown="if(event.key==='Enter') sendCommand()">
+      <button class="btn-send" onclick="sendCommand()">Send</button>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+  const MAX_LOG_LINES = 500;
+  let players = [];
+  let isRunning = false;
+  let statusPollTimer = null;
+  let playerPollTimer = null;
+  let logSource = null;
+  let autoScroll = true;
+
+  // ── Status polling ──────────────────────────────────────────
+  async function pollStatus() {
+    try {
+      const r = await fetch('/api/status');
+      const d = await r.json();
+      setStatus(d.running, d.status);
+    } catch {
+      setStatus(false, 'unreachable');
+    }
+  }
+
+  function setStatus(running, statusText) {
+    const badge = document.getElementById('statusBadge');
+    const text  = document.getElementById('statusText');
+    badge.className = 'status-badge ' + (running ? 'online' : 'offline');
+    text.textContent = running ? 'Online' : (statusText || 'Offline');
+
+    const prevRunning = isRunning;
+    isRunning = running;
+
+    document.getElementById('btnStart').disabled   = running;
+    document.getElementById('btnStop').disabled    = !running;
+    document.getElementById('btnRestart').disabled = !running;
+    document.getElementById('btnSave').disabled    = !running;
+
+    if (running && !prevRunning) {
+      connectLogs();
+      pollPlayers();
+    }
+    if (!running && prevRunning) {
+      clearInterval(playerPollTimer);
+      setPlayers([]);
+    }
+  }
+
+  // ── Player polling ──────────────────────────────────────────
+  async function pollPlayers() {
+    if (!isRunning) return;
+    try {
+      const r = await fetch('/api/players');
+      if (!r.ok) return;
+      const d = await r.json();
+      if (d.players) setPlayers(d.players);
+    } catch {}
+  }
+
+  function setPlayers(list) {
+    players = list;
+    const names = list.map(p => typeof p === 'string' ? p : p.nickname);
+
+    document.getElementById('playerBadge').textContent =
+      names.length ? names.length + '/8' : '0/8';
+    document.getElementById('playerCount').textContent =
+      names.length ? `(${names.length})` : '';
+
+    const el = document.getElementById('playerList');
+    if (!names.length) {
+      el.innerHTML = '<div class="player-empty">No players online</div>';
+    } else {
+      el.innerHTML = names.map(n =>
+        `<div class="player-item">
+          <span class="player-name">👤 ${esc(n)}</span>
+          <button class="btn-tp" onclick="quickTP('${esc(n)}')">TP here</button>
+        </div>`
+      ).join('');
+    }
+
+    // Sync dropdowns, preserving current selection
+    syncDropdown('tpFrom', names);
+    syncDropdown('tpTo',   names);
+  }
+
+  function syncDropdown(id, names) {
+    const sel = document.getElementById(id);
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">— select player —</option>' +
+      names.map(n => `<option value="${esc(n)}" ${n===prev?'selected':''}>${esc(n)}</option>`).join('');
+  }
+
+  // ── Server control ──────────────────────────────────────────
+  async function serverAction(action) {
+    if (action === 'stop' && !confirm('Stop the server?')) return;
+    if (action === 'restart' && !confirm('Restart the server?')) return;
+
+    const btns = ['btnStart','btnStop','btnRestart'].map(id => document.getElementById(id));
+    btns.forEach(b => b.disabled = true);
+
+    try {
+      const r = await fetch('/api/' + action, { method: 'POST' });
+      const d = await r.json();
+      if (d.error) toast(d.error, 'error');
+      else toast(action.charAt(0).toUpperCase() + action.slice(1) + ' command sent', 'success');
+    } catch (e) {
+      toast('Request failed: ' + e.message, 'error');
+    }
+    setTimeout(pollStatus, 1500);
+  }
+
+  // ── Teleport ────────────────────────────────────────────────
+  async function doTP() {
+    const from = document.getElementById('tpFrom').value;
+    const to   = document.getElementById('tpTo').value;
+    if (!from || !to) { toast('Select both players', 'error'); return; }
+    if (from === to)  { toast('Cannot teleport to self', 'error'); return; }
+    await tp(from, to);
+  }
+
+  async function quickTP(name) {
+    // TP clicked player to the first *other* online player, or prompt
+    const others = players
+      .map(p => typeof p === 'string' ? p : p.nickname)
+      .filter(n => n !== name);
+    if (!others.length) { toast('No other players online', 'error'); return; }
+    document.getElementById('tpFrom').value = name;
+    document.getElementById('tpTo').value   = others[0];
+  }
+
+  async function tp(player, destination) {
+    try {
+      const body = new URLSearchParams({ player, destination });
+      const r = await fetch('/api/tp', { method: 'POST', body });
+      const d = await r.json();
+      if (d.error) toast(d.error, 'error');
+      else toast(`Teleported ${player} → ${destination}`, 'success');
+    } catch (e) {
+      toast('TP failed: ' + e.message, 'error');
+    }
+  }
+
+  // ── Save server ─────────────────────────────────────────────
+  async function saveServer() {
+    await rawCommand('save', 'Saving server…');
+  }
+
+  // ── Time control ────────────────────────────────────────────
+  async function setTime(t) {
+    const labels = { dawn: 'Dawn', noon: 'Noon', dusk: 'Dusk', midnight: 'Midnight' };
+    await rawCommand('time ' + t, `Setting time to ${labels[t]}…`);
+  }
+
+  async function rawCommand(cmd, pendingMsg) {
+    if (pendingMsg) toast(pendingMsg, 'success');
+    try {
+      const body = new URLSearchParams({ cmd });
+      const r = await fetch('/api/command', { method: 'POST', body });
+      const d = await r.json();
+      if (d.error) toast(d.error, 'error');
+      else if (d.response) {
+        const msg = Array.isArray(d.response) ? d.response[0] : d.response;
+        if (msg && msg !== pendingMsg) toast(msg, 'success');
+      }
+    } catch (e) {
+      toast('Failed: ' + e.message, 'error');
+    }
+  }
+
+  // ── Command input ───────────────────────────────────────────
+  async function sendCommand() {
+    const input = document.getElementById('cmdInput');
+    const cmd = input.value.trim().replace(/^\//, '');
+    if (!cmd) return;
+    input.value = '';
+
+    try {
+      const body = new URLSearchParams({ cmd });
+      const r = await fetch('/api/command', { method: 'POST', body });
+      const d = await r.json();
+      if (d.error) toast(d.error, 'error');
+      else if (d.response) appendLog('[cmd] ' + d.response, 'info');
+    } catch (e) {
+      toast('Command failed: ' + e.message, 'error');
+    }
+  }
+
+  // ── Log streaming (SSE) ─────────────────────────────────────
+  function connectLogs() {
+    if (logSource) { logSource.close(); logSource = null; }
+
+    logSource = new EventSource('/api/logs');
+    logSource.onmessage = e => appendLog(e.data);
+    logSource.onerror = () => {
+      // SSE auto-reconnects; only log if server is still running
+      if (isRunning) appendLog('[console disconnected — reconnecting…]', 'warn');
+    };
+  }
+
+  function appendLog(raw, forceClass) {
+    const out = document.getElementById('consoleOutput');
+    const line = document.createElement('span');
+    line.className = 'log-line';
+
+    // Classify and strip Docker/TShock timestamp prefix
+    let text = raw;
+    let cls = forceClass || classifyLog(raw);
+    if (cls) line.classList.add(cls);
+
+    // Pretty-print the timestamp if present (ISO format from docker --timestamps)
+    const tsMatch = text.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})\.\d+Z\s*/);
+    if (tsMatch) {
+      const ts = tsMatch[1].replace('T', ' ');
+      text = text.slice(tsMatch[0].length);
+      const tsSpan = document.createElement('span');
+      tsSpan.className = 'ts';
+      tsSpan.textContent = ts;
+      line.appendChild(tsSpan);
+    }
+
+    line.appendChild(document.createTextNode(text));
+    out.appendChild(line);
+
+    // Trim old lines
+    while (out.childElementCount > MAX_LOG_LINES) {
+      out.removeChild(out.firstChild);
+    }
+
+    if (autoScroll) out.scrollTop = out.scrollHeight;
+  }
+
+  function classifyLog(line) {
+    const l = line.toLowerCase();
+    if (l.includes('error') || l.includes('exception') || l.includes('fatal')) return 'error';
+    if (l.includes('warn'))                                                      return 'warn';
+    if (l.includes('joined') || l.includes('has connected'))                    return 'join';
+    if (l.includes('left') || l.includes('disconnected') || l.includes('has left')) return 'leave';
+    if (l.includes('info') || l.includes('server') || l.includes('world'))     return 'info';
+    return null;
+  }
+
+  // ── Scroll to bottom ─────────────────────────────────────────
+  function scrollToBottom() {
+    const out = document.getElementById('consoleOutput');
+    out.scrollTop = out.scrollHeight;
+    autoScroll = true;
+  }
+
+  // Auto-scroll detection
+  document.addEventListener('DOMContentLoaded', () => {
+    const out = document.getElementById('consoleOutput');
+    out.addEventListener('scroll', () => {
+      autoScroll = out.scrollHeight - out.scrollTop - out.clientHeight < 40;
+    });
+  });
+
+  // ── Toast ───────────────────────────────────────────────────
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = 'toast-item ' + type;
+    el.textContent = msg;
+    document.getElementById('toast').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Boot ────────────────────────────────────────────────────
+  pollStatus();
+  statusPollTimer = setInterval(pollStatus, 5000);
+  playerPollTimer = setInterval(pollPlayers, 10000);
+</script>
+</body>
+</html>
