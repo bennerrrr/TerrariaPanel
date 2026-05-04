@@ -1,4 +1,4 @@
-# Terraria Server — The Boyz
+# Terraria Server
 
 A self-hosted Terraria server running [TShock](https://github.com/Pryaxis/TShock) in Docker, with a lightweight web panel for server management.
 
